@@ -17,32 +17,59 @@ var (
 	labelRequestTime   = `request_duration_seconds{status="%d", method="%s", path="%s"}`
 )
 
+// Opts represent initialising config options for metric exposition
+type Opts struct {
+	NormalizeHTTPStatus   bool
+	ExposeGoMetrics       bool
+	MatchedRoutePathParam string
+}
+
+type FastGlueMetrics struct {
+	Opts *Opts
+}
+
 // NewMetrics blah
-func NewMetrics(g *fastglue.Fastglue) {
-	g.Before(before)
-	g.After(after)
+func NewMetrics(g *fastglue.Fastglue, opts *Opts) *FastGlueMetrics {
+	m := &FastGlueMetrics{
+		Opts: &Opts{
+			NormalizeHTTPStatus: true,
+			ExposeGoMetrics:     false,
+		},
+	}
+	if opts != nil {
+		m.Opts = opts
+	}
+	g.Before(m.before)
+	g.After(m.after)
+	return m
 }
 
 // HandleMetrics blah
-func HandleMetrics(r *fastglue.Request) error {
+func (m *FastGlueMetrics) HandleMetrics(r *fastglue.Request) error {
 	buf := new(bytes.Buffer)
-	metrics.WritePrometheus(buf, false)
+	metrics.WritePrometheus(buf, m.Opts.ExposeGoMetrics)
 	return r.SendBytes(200, "text/plain; version=0.0.4", buf.Bytes())
 }
 
-func before(r *fastglue.Request) *fastglue.Request {
+func (m *FastGlueMetrics) before(r *fastglue.Request) *fastglue.Request {
 	r.RequestCtx.SetUserValue("latency_probe", time.Now())
 	return r
 }
 
-func after(r *fastglue.Request) *fastglue.Request {
+func (m *FastGlueMetrics) after(r *fastglue.Request) *fastglue.Request {
 	var (
 		start  = r.RequestCtx.UserValue("latency_probe").(time.Time)
 		status = r.RequestCtx.Response.StatusCode()
 		method = r.RequestCtx.Method()
-		path   = string(r.RequestCtx.Request.URI().PathOriginal())
 		size   = float64(len(r.RequestCtx.Response.Body()))
 	)
+	path := ""
+	// string(r.RequestCtx.Request.URI().PathOriginal())
+	if m.Opts.MatchedRoutePathParam != "" {
+		path = r.RequestCtx.UserValue(m.Opts.MatchedRoutePathParam).(string)
+	} else {
+		path = string(r.RequestCtx.URI().Path())
+	}
 	requestsTotalDesc := fmt.Sprintf(labelRequestsTotal)
 	requestsTimeDesc := fmt.Sprintf(labelRequestTime, status, method, path)
 	responseSizeDesc := fmt.Sprintf(labelResponseSize, status, method, path)

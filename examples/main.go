@@ -12,19 +12,25 @@ import (
 func main() {
 	// Initialize fastglue.
 	g := fastglue.NewGlue()
-	metrics.NewMetrics(g)
+	opts := &metrics.Opts{
+		// ExposeGoMetrics:       false,
+		// NormalizeHTTPStatus:   true,
+		MatchedRoutePathParam: g.MatchedRoutePathParam,
+	}
+	exporter := metrics.NewMetrics(g, opts)
 	// Handlers.
 	g.GET("/", func(r *fastglue.Request) error {
-		// return r.SendErrorEnvelope(500, "oops", nil, "")
 		return r.SendEnvelope("Welcome to Metrics")
 	})
 	g.GET("/slow/:user/ping", func(r *fastglue.Request) error {
 		time.Sleep(2000 * time.Millisecond)
-		// return r.SendErrorEnvelope(500, "oops", nil, "")
 		return r.SendEnvelope("Sleeping slow respo")
 	})
+	g.GET("/bad", func(r *fastglue.Request) error {
+		return r.SendErrorEnvelope(500, "oops", nil, "")
+	})
 	// Expose the registered metrics at `/metrics` path.
-	g.GET("/metrics", metrics.HandleMetrics)
+	g.GET("/metrics", exporter.HandleMetrics)
 	// HTTP server.
 	s := &fasthttp.Server{
 		Name:                 "metrics",
