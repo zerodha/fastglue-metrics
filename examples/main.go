@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"time"
 
 	"github.com/valyala/fasthttp"
@@ -12,22 +13,25 @@ import (
 func main() {
 	// Initialize fastglue.
 	g := fastglue.NewGlue()
-	opts := &metrics.Opts{
+	// Initialise fastglue-metrics exporter.
+	exporter := metrics.NewMetrics(g, &metrics.Opts{
 		// ExposeGoMetrics:       false,
-		// NormalizeHTTPStatus:   true,
+		// NormalizeHTTPStatus:   false,
+		ServiceName:           "dummy",
 		MatchedRoutePathParam: g.MatchedRoutePathParam,
-	}
-	exporter := metrics.NewMetrics(g, opts)
-	// Handlers.
+	})
+	// Register handlers.
 	g.GET("/", func(r *fastglue.Request) error {
 		return r.SendEnvelope("Welcome to Metrics")
 	})
 	g.GET("/slow/:user/ping", func(r *fastglue.Request) error {
-		time.Sleep(2000 * time.Millisecond)
+		sleep := 0.5 + rand.Float64()*1.75
+		time.Sleep(time.Duration(sleep) * 1000 * time.Millisecond)
 		return r.SendEnvelope("Sleeping slow respo")
 	})
 	g.GET("/bad", func(r *fastglue.Request) error {
-		return r.SendErrorEnvelope(500, "oops", nil, "")
+		status := [9]int{300, 400, 413, 500, 417, 404, 402, 503, 502}
+		return r.SendErrorEnvelope(status[rand.Intn(9)], "oops", nil, "")
 	})
 	// Expose the registered metrics at `/metrics` path.
 	g.GET("/metrics", exporter.HandleMetrics)
@@ -44,5 +48,4 @@ func main() {
 	if err := g.ListenAndServe("0.0.0.0:6090", "", s); err != nil {
 		log.Println("error starting server:", err)
 	}
-	log.Println("Bye")
 }
