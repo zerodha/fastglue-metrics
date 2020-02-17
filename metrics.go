@@ -39,8 +39,9 @@ type FastGlueMetrics struct {
 func NewMetrics(g *fastglue.Fastglue, opts *Opts) *FastGlueMetrics {
 	m := &FastGlueMetrics{
 		Opts: &Opts{
-			NormalizeHTTPStatus: false,
-			ExposeGoMetrics:     false,
+			NormalizeHTTPStatus:   true,
+			ExposeGoMetrics:       false,
+			MatchedRoutePathParam: g.MatchedRoutePathParam,
 		},
 	}
 	if opts != nil {

@@ -7,22 +7,29 @@ import (
 
 	"github.com/valyala/fasthttp"
 	"REDACTED/commons/fastglue"
-	metrics "REDACTED/fastglue-metrics"
+	fastgluemetrics "REDACTED/fastglue-metrics"
+)
+
+var (
+	fakeResponse = make([]byte, 1024*1000*1)
 )
 
 func main() {
 	// Initialize fastglue.
 	g := fastglue.NewGlue()
 	// Initialise fastglue-metrics exporter.
-	exporter := metrics.NewMetrics(g, &metrics.Opts{
-		// ExposeGoMetrics:       false,
+	exporter := fastgluemetrics.NewMetrics(g, &fastgluemetrics.Opts{
+		// ExposeGoMetrics:       true,
 		// NormalizeHTTPStatus:   false,
-		ServiceName:           "dummy",
-		MatchedRoutePathParam: g.MatchedRoutePathParam,
+		ServiceName: "dummy",
 	})
 	// Register handlers.
 	g.GET("/", func(r *fastglue.Request) error {
-		return r.SendEnvelope("Welcome to Metrics")
+		return r.SendEnvelope("Welcome to dummy-app metrics. Visit /metrics.")
+	})
+	g.GET("/fake", func(r *fastglue.Request) error {
+		r.RequestCtx.Write(fakeResponse)
+		return nil
 	})
 	g.GET("/slow/:user/ping", func(r *fastglue.Request) error {
 		sleep := 0.5 + rand.Float64()*1.75
