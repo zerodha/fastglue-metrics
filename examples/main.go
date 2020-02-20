@@ -7,7 +7,7 @@ import (
 
 	"github.com/valyala/fasthttp"
 	"REDACTED/commons/fastglue"
-	fastgluemetrics "REDACTED/fastglue-metrics"
+	fastgluemetrics "REDACTED/commons/fastglue-metrics"
 )
 
 var (
