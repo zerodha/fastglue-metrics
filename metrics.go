@@ -36,7 +36,7 @@ type FastGlueMetrics struct {
 }
 
 // NewMetrics initializes a new FastGlueMetrics instance with sane defaults.
-func NewMetrics(g *fastglue.Fastglue, opts *Opts) *FastGlueMetrics {
+func NewMetrics(g *fastglue.Fastglue, opts Opts) *FastGlueMetrics {
 	m := &FastGlueMetrics{
 		Opts: &Opts{
 			NormalizeHTTPStatus:   true,
@@ -44,8 +44,8 @@ func NewMetrics(g *fastglue.Fastglue, opts *Opts) *FastGlueMetrics {
 			MatchedRoutePathParam: g.MatchedRoutePathParam,
 		},
 	}
-	if opts != nil {
-		m.Opts = opts
+	if opts != (Opts{}) {
+		m.Opts = &opts
 	}
 	// Register middlewares.
 	g.Before(m.before)
@@ -86,7 +86,7 @@ func (m *FastGlueMetrics) after(r *fastglue.Request) *fastglue.Request {
 	// NormalizeHTTPStatus groups arbitary status codes by their cateogry.
 	// For example 400,417,413 will be grouped as 4xx.
 	if m.Opts.NormalizeHTTPStatus {
-		status = fmt.Sprintf("%sxx", string(status[0]))
+		status = string(status[0]) + "xx"
 	}
 	// Construct metric labels.
 	requestsTotalDesc := fmt.Sprintf(labelRequestsTotal, m.Opts.ServiceName, status, method, path)

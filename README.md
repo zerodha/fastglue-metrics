@@ -31,6 +31,19 @@ exporter := metrics.NewMetrics(g)
 g.GET("/metrics", exporter.HandleMetrics)
 ```
 
+### Additional Options
+
+You can pass additional options to configure the behaviour of exporter using `fastgluemetrics.Opts`.
+
+```go
+// Pass additional options
+exporter := fastgluemetrics.NewMetrics(g, fastgluemetrics.Opts{
+    ExposeGoMetrics:       true,
+    NormalizeHTTPStatus:   false,
+    ServiceName: "dummy",
+})
+```
+
 To see a fully working example, you can check [examples/main](examples/main.go).
 
 ## Configuration
