@@ -19,9 +19,9 @@ func main() {
 	g := fastglue.NewGlue()
 	// Initialise fastglue-metrics exporter.
 	exporter := fastgluemetrics.NewMetrics(g, fastgluemetrics.Opts{
-		// ExposeGoMetrics:       true,
-		// NormalizeHTTPStatus: false,
-		ServiceName: "dummy",
+		ExposeGoMetrics:     true,
+		NormalizeHTTPStatus: true,
+		ServiceName:         "dummy",
 	})
 	// Register handlers.
 	g.GET("/", func(r *fastglue.Request) error {

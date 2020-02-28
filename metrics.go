@@ -32,7 +32,8 @@ type Opts struct {
 
 // FastGlueMetrics represents the metrics instance.
 type FastGlueMetrics struct {
-	Opts *Opts
+	Opts    *Opts
+	Metrics *metrics.Set
 }
 
 // NewMetrics initializes a new FastGlueMetrics instance with sane defaults.
@@ -43,6 +44,7 @@ func NewMetrics(g *fastglue.Fastglue, opts Opts) *FastGlueMetrics {
 			ExposeGoMetrics:       false,
 			MatchedRoutePathParam: g.MatchedRoutePathParam,
 		},
+		Metrics: metrics.NewSet(),
 	}
 	if opts != (Opts{}) {
 		m.Opts = &opts
@@ -56,7 +58,10 @@ func NewMetrics(g *fastglue.Fastglue, opts Opts) *FastGlueMetrics {
 // HandleMetrics returns the metric data response.
 func (m *FastGlueMetrics) HandleMetrics(r *fastglue.Request) error {
 	buf := new(bytes.Buffer)
-	metrics.WritePrometheus(buf, m.Opts.ExposeGoMetrics)
+	m.Metrics.WritePrometheus(buf)
+	if m.Opts.ExposeGoMetrics {
+		metrics.WriteProcessMetrics(buf)
+	}
 	return r.SendBytes(200, "text/plain; version=0.0.4", buf.Bytes())
 }
 
@@ -94,8 +99,8 @@ func (m *FastGlueMetrics) after(r *fastglue.Request) *fastglue.Request {
 	responseSizeDesc := fmt.Sprintf(labelResponseSize, m.Opts.ServiceName, status, method, path)
 	// Dynamically create metrics if a new label has come up or reuse the existing
 	// metric object if the label is same.
-	metrics.GetOrCreateCounter(requestsTotalDesc).Inc()
-	metrics.GetOrCreateHistogram(requestsTimeDesc).UpdateDuration(start)
-	metrics.GetOrCreateHistogram(responseSizeDesc).Update(size)
+	m.Metrics.GetOrCreateCounter(requestsTotalDesc).Inc()
+	m.Metrics.GetOrCreateHistogram(requestsTimeDesc).UpdateDuration(start)
+	m.Metrics.GetOrCreateHistogram(responseSizeDesc).Update(size)
 	return r
 }
