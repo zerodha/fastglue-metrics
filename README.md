@@ -23,27 +23,27 @@ All the metrics are grouped by the following labels:
 To start collecting metrics, simply initialise the metric exporter:
 
 ```go
+package main
+
+import (
+    fastgluemetrics "REDACTED/commons/fastglue-metrics"
+)
+
 // Initialize fastglue.
 g := fastglue.NewGlue()
 // Initialise fastglue-metrics exporter.
-exporter := metrics.NewMetrics(g)
+exporter := fastgluemetrics.NewMetrics(g, fastgluemetrics.Opts{
+    ExposeGoMetrics:       true,
+    NormalizeHTTPStatus:   false,
+    ServiceName: "dummy",
+})
 // Expose the registered metrics at `/metrics` path.
 g.GET("/metrics", exporter.HandleMetrics)
 ```
 
 ### Additional Options
 
-You can pass additional options to configure the behaviour of exporter using `fastgluemetrics.Opts`.
-
-```go
-// Pass additional options
-exporter := fastgluemetrics.NewMetrics(g, fastgluemetrics.Opts{
-    ExposeGoMetrics:       true,
-    NormalizeHTTPStatus:   false,
-    ServiceName: "dummy",
-})
-```
-
+You can configure options to configure the behaviour of exporter using `fastgluemetrics.Opts`.
 To see a fully working example, you can check [examples/main](examples/main.go).
 
 ## Configuration

@@ -24,10 +24,10 @@ var (
 
 // Opts represents configuration properties for metrics exposition.
 type Opts struct {
-	NormalizeHTTPStatus   bool
-	ExposeGoMetrics       bool
-	MatchedRoutePathParam string
-	ServiceName           string
+	NormalizeHTTPStatus   bool   // If multiple status codes like `400`,`404`,`413` are present, setting this to `true` will make them group under their parent category i.e. `4xx`.
+	ExposeGoMetrics       bool   // Setting this to `true` would expose various `go_*` and `process_*` metrics.
+	MatchedRoutePathParam string // If the value is set, the `path` variable in metric label will be the one used while registering the handler. If the value is unset, the original request path is used.
+	ServiceName           string // Unique identifier for the service name.
 }
 
 // FastGlueMetrics represents the metrics instance.
