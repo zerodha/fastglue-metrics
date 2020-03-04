@@ -18,7 +18,7 @@ All the metrics are grouped by the following labels:
 
 ## Usage
 
-`go get REDACTED/fastglue-metrics`
+`go get REDACTED/commons/fastglue-metrics`
 
 To start collecting metrics, simply initialise the metric exporter:
 
