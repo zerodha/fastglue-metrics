@@ -36,6 +36,7 @@ exporter := fastgluemetrics.NewMetrics(g, fastgluemetrics.Opts{
     ExposeGoMetrics:       true,
     NormalizeHTTPStatus:   false,
     ServiceName: "dummy",
+    MatchedRoutePathParam: g.MatchedRoutePathParam,
 })
 // Expose the registered metrics at `/metrics` path.
 g.GET("/metrics", exporter.HandleMetrics)
@@ -57,6 +58,8 @@ To see a fully working example, you can check [examples/main](examples/main.go).
 - **ExposeGoMetrics**: Setting this to `true` would expose various `go_*` and `process_*` metrics.
 
 - **MatchedRoutePathParam**: If the value is set, the `path` variable in metric label will be the one used while registering the handler. If the value is unset, the original request path is used.
+
+The value is exposed by `fastglue` as `Fastglue.MatchedRoutePathParam`.
 
     **Note**:
     If your application has dynamic endpoints, which make use of the `Named Params` in fasthttp router, you **must** set this value. If the value is not set, then a new metric will be created for each dynamic value of the named parameter, thus impacting the performance of external monitoring systems.

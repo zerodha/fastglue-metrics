@@ -19,9 +19,10 @@ func main() {
 	g := fastglue.NewGlue()
 	// Initialise fastglue-metrics exporter.
 	exporter := fastgluemetrics.NewMetrics(g, fastgluemetrics.Opts{
-		ExposeGoMetrics:     true,
-		NormalizeHTTPStatus: true,
-		ServiceName:         "dummy",
+		ExposeGoMetrics:       true,
+		NormalizeHTTPStatus:   true,
+		ServiceName:           "dummy",
+		MatchedRoutePathParam: g.MatchedRoutePathParam,
 	})
 	// Register handlers.
 	g.GET("/", func(r *fastglue.Request) error {
@@ -36,7 +37,7 @@ func main() {
 		time.Sleep(time.Duration(sleep) * 1000 * time.Millisecond)
 		return r.SendEnvelope("Sleeping slow respo")
 	})
-	g.GET("/bad", func(r *fastglue.Request) error {
+	g.GET("/bad/:user", func(r *fastglue.Request) error {
 		status := [9]int{300, 400, 413, 500, 417, 404, 402, 503, 502}
 		return r.SendErrorEnvelope(status[rand.Intn(9)], "oops", nil, "")
 	})
