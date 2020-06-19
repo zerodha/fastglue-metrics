@@ -47,6 +47,67 @@ g.GET("/metrics", exporter.HandleMetrics)
 You can configure options to configure the behaviour of exporter using `fastgluemetrics.Opts`.
 To see a fully working example, you can check [examples/main](examples/main.go).
 
+### Exporting Custom App Metrics
+
+In case your app needs to export custom app related metrics, you can modify the 
+following example.
+
+```go
+// StatsManager is a struct that will hold your custom stats.
+type StatsManager struct {
+	Stats       map[string]int64
+	ServiceName string
+	sync.RWMutex
+}
+
+// NewStats returns an instance of StatsManager.
+func NewStats(serviceName string) *StatsManager {
+	if serviceName == "" {
+		serviceName = "myapp"
+	}
+
+	return &StatsManager{
+		Stats:       map[string]int64{},
+		ServiceName: serviceName,
+	}
+}
+
+// PromFormatter writes the value in prometheus format with the service name.
+func (s *StatsManager) PromFormatter(b *bytes.Buffer, key string, val int64) {
+	fmt.Fprintf(b, `%s{service="%s"} %d`, key, s.ServiceName, val)
+	fmt.Fprintln(b)
+}
+
+// HandleMetrics returns a handler which exports stats.
+func (app *App) HandleMetrics(g *fastglue.Fastglue) fastglue.FastRequestHandler {
+    // Initialize the fastglue exporter
+	exporter := fastgluemetrics.NewMetrics(g, fastgluemetrics.Opts{
+		ExposeGoMetrics:       true,
+		NormalizeHTTPStatus:   true,
+		ServiceName:           "veto",
+		MatchedRoutePathParam: g.MatchedRoutePathParam,
+	})
+
+	return func(r *fastglue.Request) error {
+		app.Stats.RLock()
+		defer app.Stats.RUnlock()
+
+		buf := new(bytes.Buffer)
+
+        // Write the metrics to the buffer
+		exporter.Metrics.WritePrometheus(buf)
+		metrics.WriteProcessMetrics(buf)
+
+		for _, k := range sortedKeys(app.Stats.Stats) {
+            // Format and write to the buffer
+			app.Stats.PromFormatter(buf, fmt.Sprintf("count_%s", k), app.Stats.Stats[k])
+		}
+
+		return r.SendBytes(200, "text/plain; version=0.0.4", buf.Bytes())
+	}
+}
+```
+
 ## Configuration
 
 `metrics.Options` takes in additional configurtion to customise the behaviour of exposition.
