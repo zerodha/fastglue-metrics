@@ -2,7 +2,6 @@ package fastgluemetrics
 
 import (
 	"bytes"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -75,7 +74,7 @@ func (m *FastGlueMetrics) after(r *fastglue.Request) *fastglue.Request {
 		path   = ""
 		status = strconv.Itoa(r.RequestCtx.Response.StatusCode())
 		start  = r.RequestCtx.UserValue(latencyKey).(time.Time)
-		method = r.RequestCtx.Method()
+		method = string(r.RequestCtx.Method())
 		size   = float64(len(r.RequestCtx.Response.Body()))
 	)
 	// MatchedRoutePathParam stores the actual path before string interpolation by the router.
@@ -88,19 +87,22 @@ func (m *FastGlueMetrics) after(r *fastglue.Request) *fastglue.Request {
 	} else {
 		path = string(r.RequestCtx.URI().Path())
 	}
+
 	// NormalizeHTTPStatus groups arbitary status codes by their cateogry.
 	// For example 400,417,413 will be grouped as 4xx.
 	if m.Opts.NormalizeHTTPStatus {
 		status = string(status[0]) + "xx"
 	}
-	// Construct metric labels.
-	requestsTotalDesc := fmt.Sprintf(labelRequestsTotal, m.Opts.ServiceName, status, method, path)
-	requestsTimeDesc := fmt.Sprintf(labelRequestTime, m.Opts.ServiceName, status, method, path)
-	responseSizeDesc := fmt.Sprintf(labelResponseSize, m.Opts.ServiceName, status, method, path)
-	// Dynamically create metrics if a new label has come up or reuse the existing
-	// metric object if the label is same.
-	m.Metrics.GetOrCreateCounter(requestsTotalDesc).Inc()
-	m.Metrics.GetOrCreateHistogram(requestsTimeDesc).UpdateDuration(start)
-	m.Metrics.GetOrCreateHistogram(responseSizeDesc).Update(size)
+
+	// Write the metrics.
+	m.Metrics.GetOrCreateCounter(`requests_total{service="` + m.Opts.ServiceName +
+		`", status="` + status + `", method="` + method + `", path="` + path + `"}`).Inc()
+
+	m.Metrics.GetOrCreateHistogram(`request_duration_seconds{service="` + m.Opts.ServiceName +
+		`", status="` + status + `", method="` + method + `", path="` + path + `"}`).UpdateDuration(start)
+
+	m.Metrics.GetOrCreateHistogram(`response_size_bytes{service="` + m.Opts.ServiceName +
+		`", status="` + status + `", method="` + method + `", path="` + path + `"}`).Update(size)
+
 	return r
 }
