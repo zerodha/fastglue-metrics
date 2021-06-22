@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/valyala/fasthttp"
-	"REDACTED/commons/fastglue"
-	fastgluemetrics "REDACTED/commons/fastglue-metrics"
+	"github.com/zerodha/fastglue"
+	fastgluemetrics "github.com/zerodha/fastglue-metrics"
 )
 
 var (

@@ -2,9 +2,15 @@
 
 ![grafana-screenshot](screenshots/grafana.png)
 
-## Overview
+## Overview [![Go Reference](https://pkg.go.dev/badge/github.com/zerodha/fastglue-metrics.svg)](https://pkg.go.dev/github.com/zerodha/fastglue-metrics) [![Zerodha Tech](https://zerodha.tech/static/images/github-badge.svg)](https://zerodha.tech)
 
-This package provides an easy way to collect HTTP metrics from any Golang application using the package `fastglue`. It uses Fastglue's middlewares `Before` and `After` to collect metadata about the request such as request count, response time, response size. The package is inspired from `RED` principles of service monitoring. The components of this monitoring philosophy are:
+This package provides an abstraction to collect HTTP metrics from any Golang application using the package [fastglue](https://github.com/zerodha/fastglue). It uses [before-after](https://github.com/zerodha/fastglue/tree/master/examples/before-after) middlewares to collect metrics about the request such as:
+
+- Count of HTTP requests.
+- Latency of each request.
+- Response size.
+
+The metrics collection is inspired from [RED](https://grafana.com/blog/2018/08/02/the-red-method-how-to-instrument-your-services/) principles of application monitoring. The components of this monitoring philosophy are:
 
 - **Rate** (the number of requests per second)
 - **Errors** (the number of those requests that are failing)
@@ -12,21 +18,21 @@ This package provides an easy way to collect HTTP metrics from any Golang applic
 
 All the metrics are grouped by the following labels:
 
-- **status** (HTTP Status Code)
-- **path** (The original request path used while registering the handler)
-- **method** (HTTP Method)
+- `status`: (HTTP Status Code)
+- `path`: (Request URI)
+- `method`: (HTTP Method)
 
 ## Usage
 
-`go get REDACTED/commons/fastglue-metrics`
+`go get github.com/zerodha/fastglue-metrics`
 
-To start collecting metrics, simply initialise the metric exporter:
+To start collecting metrics, simply initialise the metric exporter with:
 
 ```go
 package main
 
 import (
-    fastgluemetrics "REDACTED/commons/fastglue-metrics"
+    fastgluemetrics "github.com/zerodha/fastglue-metrics"
 )
 
 // Initialize fastglue.
@@ -122,11 +128,20 @@ func (app *App) HandleMetrics(g *fastglue.Fastglue) fastglue.FastRequestHandler 
 
 The value is exposed by `fastglue` as `Fastglue.MatchedRoutePathParam`.
 
-    **Note**:
-    If your application has dynamic endpoints, which make use of the `Named Params` in fasthttp router, you **must** set this value. If the value is not set, then a new metric will be created for each dynamic value of the named parameter, thus impacting the performance of external monitoring systems.
-    For example, for a route `/orders/:userid/fetch`, you don't want a million timeseries metrics to be created for each user.
-    `fasthttprouter` would set the value of matched path in `ctx.UserValue` with a **key**. This setting is the value of that key, which is exposed in `fastglue` package with the variable name: `MatchedRoutePathParam`.
+## Notes
 
-### Victoria Metrics vs Prometheus
+### Label Cardinality
 
-This package uses [VictoriaMetrics/metrics](https://github.com/VictoriaMetrics/metrics) which is an extremely lightweight alternative to the official Prometheus client library. The official library pulls a lot of external dependencies, does a lot of magic and has features we don't really need for our simple use case. Besides being performant, `VM/metrics` has several improvements and optimisations on how a `Histogram` metric is constructed. For more details, you can read [this](https://medium.com/@valyala/improving-histogram-usability-for-prometheus-and-grafana-bc7e5df0e350).
+If your application has dynamic endpoints, which make use of the [`Named Params` ](https://github.com/buaazp/fasthttprouter#named-parameters), you **must** set this value in order to keep label cardinality in check. If this value is not set, then a new metric will be created for each dynamic value of the named parameter, thus impacting the performance of downstream monitoring systems.
+
+For example, for a route `/orders/:userid/fetch`, you don't want a million timeseries labels to be created for each user.`fasthttprouter` would set the value of matched path in `ctx.UserValue` with a **key**. This setting is the value of that key, which is exposed in `fastglue` package with the variable name: `MatchedRoutePathParam`.
+
+### Metrics Collection Library
+
+This package uses [VictoriaMetrics/metrics](https://github.com/VictoriaMetrics/metrics) which is an extremely lightweight alternative to the official Prometheus [client library](https://github.com/prometheus/client_golang). The official library pulls a lot of external dependencies and has complex features which are not really needed for this use case.
+
+Besides being performant, `VM/metrics` has several improvements and optimisations on how a `Histogram` metric is constructed. For more details, you can read [this](https://medium.com/@valyala/improving-histogram-usability-for-prometheus-and-grafana-bc7e5df0e350) blog post.
+
+## LICENSE
+
+See [LICENSE](./LICENSE).

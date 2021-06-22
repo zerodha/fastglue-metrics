@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/metrics"
-	"REDACTED/commons/fastglue"
+	"github.com/zerodha/fastglue"
 )
 
 const (
