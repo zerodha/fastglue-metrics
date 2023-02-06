@@ -2,6 +2,7 @@ package fastgluemetrics
 
 import (
 	"bytes"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -10,23 +11,22 @@ import (
 )
 
 const (
-	// Key to store the current time in `ctx.UserValue`
+	// Key to store the current time in `ctx.UserValue`.
 	latencyKey = "latency_probe"
-)
-
-// Register various time series metrics.
-var (
-	labelRequestsTotal = `requests_total{service="%s", status="%s", method="%s", path="%s"}`
-	labelResponseSize  = `response_size_bytes{service="%s", status="%s", method="%s", path="%s"}`
-	labelRequestTime   = `request_duration_seconds{service="%s", status="%s", method="%s", path="%s"}`
 )
 
 // Opts represents configuration properties for metrics exposition.
 type Opts struct {
-	NormalizeHTTPStatus   bool   // If multiple status codes like `400`,`404`,`413` are present, setting this to `true` will make them group under their parent category i.e. `4xx`.
-	ExposeGoMetrics       bool   // Setting this to `true` would expose various `go_*` and `process_*` metrics.
-	MatchedRoutePathParam string // If the value is set, the `path` variable in metric label will be the one used while registering the handler. If the value is unset, the original request path is used.
-	ServiceName           string // Unique identifier for the service name.
+	// If multiple status codes like `400`,`404`,`413` are present,
+	// setting this to `true` will make them group under their parent category i.e. `4xx`.
+	NormalizeHTTPStatus bool
+	// Setting this to `true` would expose various `go_*` and `process_*` metrics.
+	ExposeGoMetrics bool
+	// If the value is set, the `path` variable in metric label will be the one used while registering the handler.
+	// If unset, the original request path is used.
+	MatchedRoutePathParam string
+	// Unique identifier for the service name.
+	ServiceName string
 }
 
 // FastGlueMetrics represents the metrics instance.
@@ -37,20 +37,31 @@ type FastGlueMetrics struct {
 
 // NewMetrics initializes a new FastGlueMetrics instance with sane defaults.
 func NewMetrics(g *fastglue.Fastglue, opts Opts) *FastGlueMetrics {
+	return initMetrics(g, opts, metrics.NewSet())
+}
+
+func NewMetricsWithCustom(g *fastglue.Fastglue, opts Opts, m *metrics.Set) *FastGlueMetrics {
+	return initMetrics(g, opts, m)
+}
+
+func initMetrics(g *fastglue.Fastglue, opts Opts, metrics *metrics.Set) *FastGlueMetrics {
 	m := &FastGlueMetrics{
 		Opts: &Opts{
+			ServiceName:           "default",
 			NormalizeHTTPStatus:   true,
 			ExposeGoMetrics:       false,
 			MatchedRoutePathParam: g.MatchedRoutePathParam,
 		},
-		Metrics: metrics.NewSet(),
+		Metrics: metrics,
 	}
 	if opts != (Opts{}) {
 		m.Opts = &opts
 	}
+
 	// Register middlewares.
 	g.Before(m.before)
 	g.After(m.after)
+
 	return m
 }
 
@@ -58,10 +69,12 @@ func NewMetrics(g *fastglue.Fastglue, opts Opts) *FastGlueMetrics {
 func (m *FastGlueMetrics) HandleMetrics(r *fastglue.Request) error {
 	buf := new(bytes.Buffer)
 	m.Metrics.WritePrometheus(buf)
+
 	if m.Opts.ExposeGoMetrics {
 		metrics.WriteProcessMetrics(buf)
 	}
-	return r.SendBytes(200, "text/plain; version=0.0.4", buf.Bytes())
+
+	return r.SendBytes(http.StatusOK, "text/plain; version=0.0.4", buf.Bytes())
 }
 
 func (m *FastGlueMetrics) before(r *fastglue.Request) *fastglue.Request {
@@ -71,7 +84,7 @@ func (m *FastGlueMetrics) before(r *fastglue.Request) *fastglue.Request {
 
 func (m *FastGlueMetrics) after(r *fastglue.Request) *fastglue.Request {
 	var (
-		path   = ""
+		path   string
 		status = strconv.Itoa(r.RequestCtx.Response.StatusCode())
 		start  = r.RequestCtx.UserValue(latencyKey).(time.Time)
 		method = string(r.RequestCtx.Method())
@@ -88,7 +101,7 @@ func (m *FastGlueMetrics) after(r *fastglue.Request) *fastglue.Request {
 		path = string(r.RequestCtx.URI().Path())
 	}
 
-	// NormalizeHTTPStatus groups arbitary status codes by their cateogry.
+	// NormalizeHTTPStatus groups arbitrary status codes by their cateogry.
 	// For example 400,417,413 will be grouped as 4xx.
 	if m.Opts.NormalizeHTTPStatus {
 		status = string(status[0]) + "xx"
