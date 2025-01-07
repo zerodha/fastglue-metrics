@@ -32,12 +32,12 @@ func main() {
 		r.RequestCtx.Write(fakeResponse)
 		return nil
 	})
-	g.GET("/slow/:user/ping", func(r *fastglue.Request) error {
+	g.GET("/slow/{user}/ping", func(r *fastglue.Request) error {
 		sleep := 0.5 + rand.Float64()*1.75
 		time.Sleep(time.Duration(sleep) * 1000 * time.Millisecond)
 		return r.SendEnvelope("Sleeping slow respo")
 	})
-	g.GET("/bad/:user", func(r *fastglue.Request) error {
+	g.GET("/bad/{user}", func(r *fastglue.Request) error {
 		status := [9]int{300, 400, 413, 500, 417, 404, 402, 503, 502}
 		return r.SendErrorEnvelope(status[rand.Intn(9)], "oops", nil, "")
 	})
